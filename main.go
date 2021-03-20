@@ -10,7 +10,7 @@ import (
 )
 
 func primary() {
-	err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "C:/Users/phili/Documents/NTNU/Sanntids/exercise-7-philisg").Run()
+	
 	port := ":56456"
 	pc, err := net.Dial("udp", port)
 	if err != nil {
@@ -31,8 +31,7 @@ func primary() {
 }
 
 func backup(wg *sync.WaitGroup) {
-	err := exec.Command("cmd", "/C", "start", "powershell", "go", "run", "C:/Users/phili/Documents/NTNU/Sanntids/exercise-7-philisg").Run()
-
+	
 
 	UDPcounter := make(chan int)
 	counter := 0
@@ -73,17 +72,18 @@ loop:
 			fmt.Println("Received over UDP, Counter: ", counter)
 
 		default:
-			if time.Since(lastMsg) > 3*time.Second {
+			if time.Since(lastMsg) > 2*time.Second {
 				isAlive = false
+		
 				break loop
 			}
 		}
 	}
-
 	fmt.Println("----------Backup-----------")
 	go func() {
 		wg.Add(1)
 		backup(wg)
+		exec.Command("cmd", "/C", "start", "powershell", "go", "run", "C:/Users/phili/Documents/NTNU/Sanntids/exercise-7-philisg/main.go").Run()
 	}()
 
 	pc, err := net.Dial("udp", port)
@@ -103,6 +103,7 @@ loop:
 } 
 
 func main() {
+	
 	var wg sync.WaitGroup
 	wg.Add(2)
 
