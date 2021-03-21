@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 	"os/exec"
+	"flag"
 )
 
-func primary() {
-	
+func primary(count int) {
+	fmt.Println("Primary up and running!")
 	port := ":56456"
 	pc, err := net.Dial("udp", port)
 	if err != nil {
@@ -18,23 +19,18 @@ func primary() {
 		return
 	}
 	
-	
-	count := 0
-	for i := 0; i < 7; i++ {
+	for i := 0; i < 5; i++ {
 		count += 1
 		fmt.Fprint(pc, count)
 		fmt.Println("counter: ",count)
 		time.Sleep(time.Second * 1)
 	}
 	pc.Close()
-
 }
 
 func backup(wg *sync.WaitGroup) {
-	
-
 	UDPcounter := make(chan int)
-	counter := 0
+	counter := 3
 	port := ":56456"
 	var isAlive bool = true 
 
@@ -58,7 +54,6 @@ func backup(wg *sync.WaitGroup) {
 		}()
 		for(isAlive){}
 		pc.Close()
-		
 	}()
 
  	lastMsg := time.Now()
@@ -69,48 +64,34 @@ loop:
 		case c := <-UDPcounter:
 			lastMsg = time.Now()
 			counter = c
-			fmt.Println("Received over UDP, Counter: ", counter)
-
+			//fmt.Println("Received over UDP, Counter: ", counter) //for debuging
 		default:
 			if time.Since(lastMsg) > 2*time.Second {
 				isAlive = false
-		
 				break loop
 			}
 		}
 	}
-	fmt.Println("----------Backup-----------")
-	go func() {
-		wg.Add(1)
-		backup(wg)
-		exec.Command("cmd", "/C", "start", "powershell", "go", "run", "C:/Users/phili/Documents/NTNU/Sanntids/exercise-7-philisg/main.go").Run()
-	}()
 
-	pc, err := net.Dial("udp", port)
-	if err != nil {
-		fmt.Printf("An error occured while trying to send on UDP")
-		return
-	}
-	count := counter
-	for i := 0; i < 7; i++ {
-		count += 1
-		fmt.Fprint(pc, count)
-		fmt.Println("backup counter: ", count)
-		time.Sleep(time.Second * 1)
-	}
-	pc.Close()
+	fmt.Println("Timeout reached.")
+	fmt.Println("Starting backup!")
+	strcounter := strconv.Itoa(counter)
+	exec.Command("cmd", "/C", "start", "powershell", "go", "run", "C:/Users/phili/Documents/NTNU/Sanntids/exercise-7-philisg/main.go", "-count="+strcounter).Run()
 	wg.Done()
 } 
 
 func main() {
-	
+	CountFromArg := flag.String("count","0","The counter start from this number")
+	flag.Parse()
+	startCounter, _ := strconv.Atoi(*CountFromArg)
+	//fmt.Println("From command line: ", startCounter) //for debuging
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go func() {
-		primary()
+	go func(count int) {
+		primary(count)
 		wg.Done()
-	}()
+	}(startCounter)
 
 	go func() {
 		backup(&wg)
